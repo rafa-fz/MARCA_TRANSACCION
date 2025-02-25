@@ -1,6 +1,6 @@
-package com.banquito.marca.aplicacion.controlador.dto.peticion;
+package com.banquito.marca.aplicacion.dto.peticion;
 
-import com.banquito.marca.aplicacion.controlador.dto.DetalleJsonDTO;
+import com.banquito.marca.aplicacion.dto.DetalleJsonDTO;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;

@@ -1,6 +1,6 @@
 package com.banquito.marca.aplicacion.controlador.mapper;
 
-import com.banquito.marca.aplicacion.controlador.dto.respuesta.TransaccionRespuestaDTO;
+import com.banquito.marca.aplicacion.dto.respuesta.TransaccionRespuestaDTO;
 import com.banquito.marca.aplicacion.modelo.Transaccion;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;

@@ -1,5 +1,6 @@
 package com.banquito.marca.compartido.excepciones;
 
+import com.banquito.marca.aplicacion.excepcion.TransaccionRechazadaExcepcion;
 import com.banquito.marca.compartido.respuestas.RespuestaApi;
 import com.banquito.marca.compartido.utilidades.UtilidadRespuesta;
 import jakarta.validation.ConstraintViolationException;
@@ -74,6 +75,17 @@ public class ManejadorExcepcionesGlobal {
                         "OPERACION_INVALIDA",
                         ex.getMessage(),
                         null
+                )
+        );
+    }
+
+    @ExceptionHandler(TransaccionRechazadaExcepcion.class)
+    public ResponseEntity<?> handleTransaccionRechazadaException(TransaccionRechazadaExcepcion ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                UtilidadRespuesta.error(
+                        "TRANSACCION_RECHAZADA",
+                        ex.getMessage(),
+                        ex.getDetalle()
                 )
         );
     }

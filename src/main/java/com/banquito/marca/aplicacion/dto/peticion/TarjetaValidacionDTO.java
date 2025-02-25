@@ -1,4 +1,4 @@
-package com.banquito.marca.aplicacion.controlador.dto.peticion;
+package com.banquito.marca.aplicacion.dto.peticion;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;

@@ -1,6 +1,6 @@
 package com.banquito.marca.aplicacion.controlador.mapper;
 
-import com.banquito.marca.aplicacion.controlador.dto.peticion.TarjetaValidacionDTO;
+import com.banquito.marca.aplicacion.dto.peticion.TarjetaValidacionDTO;
 import com.banquito.marca.aplicacion.modelo.Tarjeta;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
