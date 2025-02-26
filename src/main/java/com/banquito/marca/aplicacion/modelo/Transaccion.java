@@ -1,19 +1,10 @@
 package com.banquito.marca.aplicacion.modelo;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Data
-@NoArgsConstructor
-@ToString
-@EqualsAndHashCode
+@Document(collection = "Transaccion")
 public class Transaccion {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

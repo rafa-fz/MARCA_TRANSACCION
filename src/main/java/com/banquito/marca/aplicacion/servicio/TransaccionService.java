@@ -40,7 +40,6 @@ public class TransaccionService {
     private static final String ESTADO_PENDIENTE = "PEN";
     private static final String ESTADO_APROVADA = "APR";
     private static final String ESTADO_RECHAZADA = "REC";
-    private static final String ESTADO_REVERSADA = "REV";
 
     private static final BigDecimal PORCENTAJE_COMISION = BigDecimal.valueOf(0.001);
 
