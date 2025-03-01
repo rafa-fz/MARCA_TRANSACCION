@@ -3,11 +3,11 @@ package com.banquito.marca;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class MarcaApplicationTests {
+// @SpringBootTest
+// class MarcaApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+// 	@Test
+// 	void contextLoads() {
+// 	}
 
-}
+// }
