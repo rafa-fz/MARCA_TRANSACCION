@@ -1,81 +1,115 @@
 package com.banquito.marca.aplicacion.servicio;
 
-import com.banquito.marca.aplicacion.dto.DetalleJsonDTO;
-import com.banquito.marca.aplicacion.dto.ItemComisionDTO;
-import com.banquito.marca.aplicacion.dto.TransaccionBancoDTO;
-import com.banquito.marca.aplicacion.dto.peticion.TransaccionPeticionDTO;
-import com.banquito.marca.aplicacion.excepcion.TransaccionRechazadaExcepcion;
-import com.banquito.marca.aplicacion.http.CbsClient;
-import com.banquito.marca.aplicacion.modelo.Tarjeta;
-import com.banquito.marca.aplicacion.modelo.Transaccion;
-import com.banquito.marca.aplicacion.repositorio.ITransaccionRepository;
-import com.banquito.marca.compartido.excepciones.FeignExcepcion;
-import com.banquito.marca.compartido.excepciones.OperacionInvalidaExcepcion;
-import com.banquito.marca.compartido.utilidades.UtilidadHash;
-
-import feign.FeignException;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.Predicate;
-
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+
+import com.banquito.marca.aplicacion.modelo.Transaccion;
+import com.banquito.marca.aplicacion.repositorio.TransaccionRepository;
+import com.banquito.marca.aplicacion.utilidad.EncryptionUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class TransaccionService {
-    private final ITransaccionRepository repositorio;
 
-    private final ValidadorTarjetasService validadorTarjetasService;
-
-    private final CbsClient cbsClient;
-
-    private static final String ESTADO_PENDIENTE = "PEN";
-    private static final String ESTADO_APROVADA = "APR";
-    private static final String ESTADO_RECHAZADA = "REC";
-
-    private static final BigDecimal PORCENTAJE_COMISION = BigDecimal.valueOf(0.001);
+    private final TransaccionRepository transaccionRepository;
+    private final EncryptionUtil encryptionUtil;
+    private final ObjectMapper objectMapper;
 
     public TransaccionService(
-            ITransaccionRepository repositorio,
-            ValidadorTarjetasService validadorTarjetasService,
-            CbsClient cbsClient
-    ) {
-        this.repositorio = repositorio;
-        this.validadorTarjetasService = validadorTarjetasService;
-        this.cbsClient = cbsClient;
+            TransaccionRepository transaccionRepository,
+            EncryptionUtil encryptionUtil) {
+        this.transaccionRepository = transaccionRepository;
+        this.encryptionUtil = encryptionUtil;
+        this.objectMapper = new ObjectMapper();
     }
 
-    public void registrarTransaccion(Transaccion transaccion, Tarjeta tarjeta, String cvv, String fechaCaducidad) {
-        if (!UtilidadHash.verificarString(cvv, tarjeta.getCvv()))
-            throw new OperacionInvalidaExcepcion("Código de seguridad de la tarjeta incorrecto");
+    public Transaccion registrarTransaccion(Transaccion transaccion) {
+        try {
+            log.info("Iniciando registro de transacción: {}", transaccion);
 
-        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("MM/yy");
-        YearMonth fechaEntrada = YearMonth.parse(fechaCaducidad, inputFormatter);
-        ;
-        YearMonth fechaBaseDatos = YearMonth.from(tarjeta.getFechaCaducidad());
+            // Setear fechas primero
+            setearFechas(transaccion);
+            log.info("Fechas seteadas: {}", transaccion);
 
-        if (!fechaEntrada.equals(fechaBaseDatos))
-            throw new OperacionInvalidaExcepcion("La fecha de caducidad de la tarjeta incorrecta");
+            // Validar datos requeridos
+            validarDatosRequeridos(transaccion);
+            log.info("Datos validados correctamente");
 
-        transaccion.setTarjetaId(tarjeta.getId());
-        transaccion.setEstado(TransaccionService.ESTADO_PENDIENTE);
-        transaccion.setFechaHora(LocalDateTime.now());
-        transaccion.setComision(this.calcularComision(transaccion.getValor()));
-        transaccion.setFechaActualizacion(LocalDateTime.now());
+            // Encriptar datos sensibles
+            encriptarDatos(transaccion);
+            log.info("Datos encriptados correctamente");
 
-        this.repositorio.save(transaccion);
+            // Guardar transacción
+            transaccion.setEstado(true);
+            Transaccion transaccionGuardada = transaccionRepository.save(transaccion);
+            log.info("Transacción guardada exitosamente: {}", transaccionGuardada);
+
+            return transaccionGuardada;
+
+        } catch (Exception e) {
+            log.error("Error detallado al registrar la transacción: ", e);
+            throw new RuntimeException("Error al registrar la transacción: " + e.getMessage(), e);
+        }
     }
 
-    private BigDecimal calcularComision(BigDecimal valor) {
-        return valor.multiply(PORCENTAJE_COMISION);
+    private void encriptarDatos(Transaccion transaccion) {
+        try {
+            Map<String, Object> datosEncriptar = new HashMap<>();
+            datosEncriptar.put("numeroTarjeta", transaccion.getNumeroTarjeta());
+            datosEncriptar.put("cvv", transaccion.getCvv());
+            datosEncriptar.put("fechaCaducidad", transaccion.getFechaCaducidad());
+            datosEncriptar.put("monto", transaccion.getMonto());
+
+            String jsonDatos = objectMapper.writeValueAsString(datosEncriptar);
+            String datosEncriptados = encryptionUtil.encrypt(jsonDatos);
+
+            transaccion.setTransaccionEncriptada(datosEncriptados);
+
+        } catch (Exception e) {
+            log.error("Error al encriptar datos: {}", e.getMessage());
+            throw new RuntimeException("Error al encriptar datos de la transacción", e);
+        }
+    }
+
+    private void validarDatosRequeridos(Transaccion transaccion) {
+        log.info("Validando transacción: {}", transaccion);
+
+        if (transaccion == null) {
+            throw new IllegalArgumentException("La transacción no puede ser nula");
+        }
+
+        StringBuilder errores = new StringBuilder();
+        
+        if (transaccion.getNumeroTarjeta() == null || transaccion.getNumeroTarjeta().trim().isEmpty()) {
+            errores.append("Número de tarjeta es requerido. ");
+        }
+        if (transaccion.getCvv() == null || transaccion.getCvv().trim().isEmpty()) {
+            errores.append("CVV es requerido. ");
+        }
+        if (transaccion.getMonto() == null) {
+            errores.append("Monto es requerido. ");
+        }
+        if (transaccion.getFechaCaducidad() == null) {
+            errores.append("Fecha de caducidad es requerida. ");
+        }
+
+        if (errores.length() > 0) {
+            throw new IllegalArgumentException(errores.toString());
+        }
+    }
+
+    private void setearFechas(Transaccion transaccion) {
+        LocalDateTime fecha = LocalDateTime.now();
+        transaccion.setFechaRecepcion(fecha);
+        transaccion.setFechaRespuesta(fecha);
     }
 
     public Page<Transaccion> listarTransacciones(
@@ -84,56 +118,6 @@ public class TransaccionService {
             LocalDateTime fechaHasta,
             String numeroTarjeta,
             Pageable pageable) {
-        return repositorio.findAll((root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (estado != null && !estado.isEmpty()) {
-                predicates.add(cb.equal(root.get("estado"), estado));
-            }
-
-            if (fechaDesde != null) {
-                predicates.add(cb.greaterThanOrEqualTo(
-                        root.get("fechaHora"), fechaDesde));
-            }
-
-            if (fechaHasta != null) {
-                predicates.add(cb.lessThanOrEqualTo(
-                        root.get("fechaHora"), fechaHasta));
-            }
-
-            if (numeroTarjeta != null && !numeroTarjeta.isEmpty()) {
-                Join<Transaccion, Tarjeta> tarjetaJoin = root.join("tarjeta");
-                predicates.add(cb.equal(tarjetaJoin.get("numero"), numeroTarjeta));
-            }
-
-            query.orderBy(cb.desc(root.get("fechaHora")));
-
-            return predicates.isEmpty()
-                    ? cb.conjunction()
-                    : cb.and(predicates.toArray(new Predicate[0]));
-        }, pageable);
-    }
-
-    public void enviarTransaccionBanco(Transaccion transaccion, TransaccionPeticionDTO transaccionPeticionDTO) {
-        ItemComisionDTO itemMarca = new ItemComisionDTO();
-        itemMarca.setReferencia("aaa");
-        itemMarca.setNumeroCuenta("00000004");
-        itemMarca.setComision(transaccion.getComision());
-
-        DetalleJsonDTO detalleJsonDTO = transaccionPeticionDTO.getDetalle();
-        detalleJsonDTO.setMarca(itemMarca);
-        transaccionPeticionDTO.setDetalle(detalleJsonDTO);
-
-        try {
-            TransaccionBancoDTO res = this.cbsClient.enviarTransaccionBanco(transaccionPeticionDTO);
-        } catch (FeignExcepcion excepcion) {
-            transaccion.setEstado(TransaccionService.ESTADO_RECHAZADA);
-            this.repositorio.save(transaccion);
-
-            throw new TransaccionRechazadaExcepcion("Transaccion rechazada por el Banco", excepcion.getMessage());
-        }
-
-        transaccion.setEstado(TransaccionService.ESTADO_APROVADA);
-        this.repositorio.save(transaccion);
+        return transaccionRepository.findAll(pageable);
     }
 }

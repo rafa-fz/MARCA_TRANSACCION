@@ -1,8 +1,8 @@
 package com.banquito.marca.compartido.utilidades;
 
-import com.banquito.marca.compartido.respuestas.RespuestaApi;
-
 import java.util.Map;
+
+import com.banquito.marca.compartido.respuestas.RespuestaApi;
 
 public class UtilidadRespuesta {
     private static final String VERSION_API = "1.0";

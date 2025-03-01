@@ -1,7 +1,8 @@
 package com.banquito.marca.compartido.respuestas;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RespuestaApi<T> {
@@ -9,7 +10,8 @@ public class RespuestaApi<T> {
     private Meta meta;
     private DetallesError error;
 
-    public RespuestaApi() {}
+    public RespuestaApi() {
+    }
 
     public RespuestaApi(T datos, Meta meta) {
         this.datos = datos;
