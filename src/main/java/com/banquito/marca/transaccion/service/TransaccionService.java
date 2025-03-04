@@ -3,11 +3,18 @@ package com.banquito.marca.transaccion.service;
 import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.banquito.marca.transaccion.client.TarjetaClient;
+import com.banquito.marca.transaccion.controller.dto.ProcesadorRespuestaDTO;
+import com.banquito.marca.transaccion.controller.dto.SwiftResponseDTO;
+import com.banquito.marca.transaccion.controller.dto.TransaccionPeticionDTO;
 import com.banquito.marca.transaccion.controller.dto.ValidacionTarjetaRequestDTO;
 import com.banquito.marca.transaccion.controller.dto.ValidacionTarjetaResponseDTO;
+import com.banquito.marca.transaccion.excepcion.TransaccionNotFoundException;
 import com.banquito.marca.transaccion.model.Transaccion;
 import com.banquito.marca.transaccion.repository.TransaccionRepository;
 import com.banquito.marca.transaccion.utils.EncriptacionUtil;
@@ -28,56 +35,66 @@ public class TransaccionService {
         this.encriptacionUtil = encriptacionUtil;
     }
 
-    public Transaccion crearTransaccion(Transaccion transaccion) {
-        // Establecemos la fecha de recepción al inicio
-        transaccion.setFechaRecepcion(LocalDateTime.now());
-
+    @Transactional
+    public ProcesadorRespuestaDTO validarTarjeta(TransaccionPeticionDTO peticionDTO) {
         // Preparamos la solicitud de validación
         ValidacionTarjetaRequestDTO validacionRequest = new ValidacionTarjetaRequestDTO();
-        validacionRequest.setNumeroTarjeta(transaccion.getNumeroTarjeta());
-        validacionRequest.setCvv(transaccion.getCvv());
-        validacionRequest.setFechaCaducidad(transaccion.getFechaCaducidad());
+        validacionRequest.setNumeroTarjeta(peticionDTO.getNumeroTarjeta());
+        validacionRequest.setCvv(peticionDTO.getCvv());
+        validacionRequest.setFechaCaducidad(peticionDTO.getFechaCaducidad());
 
         // Validamos la tarjeta
         ValidacionTarjetaResponseDTO respuesta = tarjetaClient.validarTarjeta(validacionRequest);
-        
-        // Establecemos la fecha de respuesta cuando recibimos la validación
-        transaccion.setFechaRespuesta(LocalDateTime.now());
-        transaccion.setEstado(respuesta.getEsValida());
-        
-        // Encriptamos los datos sensibles de la transacción
-        String datosParaEncriptar = String.format(
-            "CodigoUnicoTransaccion=%s;numeroTarjeta=%s;cvv=%s;fechaCaducidad=%s;FechaRecepcion=%s;FechaRespuesta=%s;monto=%s;estado=%s",
-            transaccion.getCodigoUnicoTransaccion(),
-            transaccion.getNumeroTarjeta(),
-            transaccion.getCvv(),
-            transaccion.getFechaCaducidad(),
-            transaccion.getFechaRecepcion(),
-            transaccion.getFechaRespuesta(),
-            transaccion.getMonto(),
-            transaccion.isEstado()
-        );
-        
-        transaccion.setTransaccionEncriptada(encriptacionUtil.encriptar3DES(datosParaEncriptar));
-        
-        Transaccion transaccionGuardada = transaccionRepository.save(transaccion);
-        
-        if (!respuesta.getEsValida()) {
-            throw new RuntimeException("Tarjeta inválida");
+
+        // Obtenemos el código SWIFT
+        SwiftResponseDTO swiftResponse = tarjetaClient.obtenerSwift(peticionDTO.getNumeroTarjeta());
+
+        // Creamos la respuesta en el formato requerido
+        ProcesadorRespuestaDTO procesadorRespuesta = new ProcesadorRespuestaDTO();
+        procesadorRespuesta.setEsValida(respuesta.getEsValida());
+        procesadorRespuesta.setMensaje(respuesta.getMensaje());
+        procesadorRespuesta.setSwiftBanco(swiftResponse.getSwiftBanco());
+
+        // Si la validación es exitosa, guardamos la transacción
+        if (respuesta.getEsValida()) {
+            Transaccion transaccion = new Transaccion();
+            transaccion.setCodigoUnicoTransaccion(peticionDTO.getCodigoUnicoTransaccion());
+            transaccion.setNumeroTarjeta(peticionDTO.getNumeroTarjeta());
+            transaccion.setCvv(peticionDTO.getCvv());
+            transaccion.setFechaCaducidad(peticionDTO.getFechaCaducidad());
+            transaccion.setMonto(peticionDTO.getMonto());
+            transaccion.setFechaRecepcion(LocalDateTime.now());
+            transaccion.setFechaRespuesta(LocalDateTime.now());
+            transaccion.setEstado(true);
+
+            // Encriptamos los datos sensibles
+            String datosParaEncriptar = String.format(
+                "CodigoUnicoTransaccion=%s;numeroTarjeta=%s;cvv=%s;fechaCaducidad=%s;FechaRecepcion=%s;FechaRespuesta=%s;monto=%s;estado=%s",
+                transaccion.getCodigoUnicoTransaccion(),
+                transaccion.getNumeroTarjeta(),
+                transaccion.getCvv(),
+                transaccion.getFechaCaducidad(),
+                transaccion.getFechaRecepcion(),
+                transaccion.getFechaRespuesta(),
+                transaccion.getMonto(),
+                transaccion.isEstado()
+            );
+            
+            transaccion.setTransaccionEncriptada(encriptacionUtil.encriptar3DES(datosParaEncriptar));
+            transaccionRepository.save(transaccion);
         }
 
-        return transaccionGuardada;
+        return procesadorRespuesta;
     }
 
-    public Transaccion buscarPorId(String codigoUnicoTransaccion) {
-        return transaccionRepository.findById(codigoUnicoTransaccion)
-                .orElseThrow(() -> new RuntimeException("Transacción no encontrada"));
+    @Transactional(readOnly = true)
+    public Transaccion buscarTransaccion(String codigoUnico) {
+        return transaccionRepository.findById(codigoUnico)
+                .orElseThrow(() -> new TransaccionNotFoundException("Transacción no encontrada con código: " + codigoUnico));
     }
 
-    public Transaccion procesarTransaccion(String codigoUnicoTransaccion) {
-        Transaccion transaccion = buscarPorId(codigoUnicoTransaccion);
-        // Ya no establecemos fechaRespuesta aquí porque ya se estableció en la validación
-        transaccion.setEstado(true); // Actualizar estado a procesado
-        return transaccionRepository.save(transaccion);
+    @Transactional(readOnly = true)
+    public Page<Transaccion> listarTransacciones(Pageable pageable) {
+        return transaccionRepository.findAll(pageable);
     }
-} 
+}
