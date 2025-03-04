@@ -1,13 +1,22 @@
 package com.banquito.marca.transaccion.controller.dto;
 
 public class ValidacionTarjetaResponseDTO {
-    private Boolean esValida;
+    private boolean esValida;
+    private String mensaje;
 
-    public Boolean getEsValida() {
+    public boolean getEsValida() {
         return esValida;
     }
 
-    public void setEsValida(Boolean esValida) {
+    public void setEsValida(boolean esValida) {
         this.esValida = esValida;
+    }
+
+    public String getMensaje() {
+        return mensaje;
+    }
+
+    public void setMensaje(String mensaje) {
+        this.mensaje = mensaje;
     }
 } 
