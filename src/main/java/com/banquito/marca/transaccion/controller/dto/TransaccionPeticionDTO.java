@@ -1,12 +1,24 @@
 package com.banquito.marca.transaccion.controller.dto;
 
 import java.math.BigDecimal;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "DTO para la petición de creación de transacción")
 public class TransaccionPeticionDTO {
+
+    @Schema(description = "Código único de la transacción", example = "TRX-001")
     private String codigoUnicoTransaccion;
+
+    @Schema(description = "Número de tarjeta", example = "5135348779487482")
     private String numeroTarjeta;
+
+    @Schema(description = "CVV de la tarjeta", example = "123")
     private String cvv;
+
+    @Schema(description = "Fecha de caducidad de la tarjeta", example = "12/25")
     private String fechaCaducidad;
+
+    @Schema(description = "Monto de la transacción", example = "100.50")
     private BigDecimal monto;
 
     public TransaccionPeticionDTO() {
