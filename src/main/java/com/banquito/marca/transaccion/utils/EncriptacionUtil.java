@@ -6,26 +6,68 @@ import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class EncriptacionUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(EncriptacionUtil.class);
     private static final String ALGORITHM = "DESede";
-    private final String encryptionKey;
+    
+    @Value("${app.encryption.key}")
+    private String key;
 
-    public EncriptacionUtil(@Value("${app.encryption.key}") String encryptionKey) {
-        this.encryptionKey = encryptionKey;
-    }
-
-    public String encriptar3DES(String datos) {
+    public String encriptar3DES(String texto) {
         try {
-            byte[] keyBytes = encryptionKey.getBytes();
-            SecretKey key = new SecretKeySpec(keyBytes, ALGORITHM);
+            // Aseguramos que la clave tenga 24 caracteres (192 bits)
+            String keyAjustada = ajustarLongitudClave(key);
+            
+            byte[] keyBytes = keyAjustada.getBytes("UTF-8");
+            SecretKey secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
+            
             Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-            byte[] textoEncriptado = cipher.doFinal(datos.getBytes());
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            
+            byte[] textoEncriptado = cipher.doFinal(texto.getBytes("UTF-8"));
             return Base64.getEncoder().encodeToString(textoEncriptado);
+            
         } catch (Exception e) {
+            log.error("Error al encriptar: {}", e.getMessage());
             throw new RuntimeException("Error al encriptar datos", e);
         }
+    }
+
+    public String desencriptar3DES(String textoEncriptado) {
+        try {
+            // Aseguramos que la clave tenga 24 caracteres (192 bits)
+            String keyAjustada = ajustarLongitudClave(key);
+            
+            byte[] keyBytes = keyAjustada.getBytes("UTF-8");
+            SecretKey secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
+            
+            Cipher cipher = Cipher.getInstance(ALGORITHM);
+            cipher.init(Cipher.DECRYPT_MODE, secretKey);
+            
+            byte[] textoDesencriptado = cipher.doFinal(Base64.getDecoder().decode(textoEncriptado));
+            return new String(textoDesencriptado, "UTF-8");
+            
+        } catch (Exception e) {
+            log.error("Error al desencriptar: {}", e.getMessage());
+            throw new RuntimeException("Error al desencriptar datos", e);
+        }
+    }
+
+    private String ajustarLongitudClave(String originalKey) {
+        if (originalKey == null) {
+            throw new IllegalArgumentException("La clave de encriptación no puede ser nula");
+        }
+        
+        // La clave debe tener 24 caracteres para 3DES
+        StringBuilder keyBuilder = new StringBuilder(originalKey);
+        while (keyBuilder.length() < 24) {
+            keyBuilder.append(originalKey);
+        }
+        return keyBuilder.substring(0, 24);
     }
 } 
