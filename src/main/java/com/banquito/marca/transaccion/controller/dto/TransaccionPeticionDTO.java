@@ -6,16 +6,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "DTO para la petición de creación de transacción")
 public class TransaccionPeticionDTO {
 
-    @Schema(description = "Código único de la transacción", example = "TRX-001")
+    @Schema(description = "Código único de la transacción", example = "TRX1234567891011")
     private String codigoUnicoTransaccion;
 
-    @Schema(description = "Número de tarjeta", example = "5135348779487482")
+    @Schema(description = "Número de tarjeta", example = "5135860771089499")
     private String numeroTarjeta;
 
-    @Schema(description = "CVV de la tarjeta", example = "123")
+    @Schema(description = "CVV de la tarjeta", example = "553")
     private String cvv;
 
-    @Schema(description = "Fecha de caducidad de la tarjeta", example = "12/25")
+    @Schema(description = "Fecha de caducidad de la tarjeta (MM/YY)", example = "03/29")
     private String fechaCaducidad;
 
     @Schema(description = "Monto de la transacción", example = "100.50")
