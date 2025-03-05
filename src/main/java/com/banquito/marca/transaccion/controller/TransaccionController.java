@@ -18,7 +18,6 @@ import com.banquito.marca.transaccion.service.TransaccionService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/procesador/tarjetas")
@@ -34,7 +33,7 @@ public class TransaccionController {
 
     @Operation(summary = "Validar una tarjeta", description = "Valida una tarjeta y retorna su estado junto con el código SWIFT del banco")
     @PostMapping("/validar")
-    public ResponseEntity<ProcesadorRespuestaDTO> validarTarjeta(@Valid @RequestBody TransaccionPeticionDTO peticionDTO) {
+    public ResponseEntity<ProcesadorRespuestaDTO> validarTarjeta(@RequestBody TransaccionPeticionDTO peticionDTO) {
         return ResponseEntity.ok(transaccionService.validarTarjeta(peticionDTO));
     }
 
