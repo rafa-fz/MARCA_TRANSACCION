@@ -1,6 +1,5 @@
 package com.banquito.marca.transaccion.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +25,6 @@ public class TransaccionController {
 
     private final TransaccionService transaccionService;
 
-    @Autowired
     public TransaccionController(TransaccionService transaccionService) {
         this.transaccionService = transaccionService;
     }
