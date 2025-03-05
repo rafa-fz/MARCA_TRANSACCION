@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,16 +24,15 @@ import feign.FeignException;
 
 @Service
 public class TransaccionService {
-    
+
     private static final Logger log = LoggerFactory.getLogger(TransaccionService.class);
     private final TransaccionRepository transaccionRepository;
     private final TarjetaClient tarjetaClient;
     private final EncriptacionUtil encriptacionUtil;
 
-    @Autowired
-    public TransaccionService(TransaccionRepository transaccionRepository, 
-                            TarjetaClient tarjetaClient,
-                            EncriptacionUtil encriptacionUtil) {
+    public TransaccionService(TransaccionRepository transaccionRepository,
+            TarjetaClient tarjetaClient,
+            EncriptacionUtil encriptacionUtil) {
         this.transaccionRepository = transaccionRepository;
         this.tarjetaClient = tarjetaClient;
         this.encriptacionUtil = encriptacionUtil;
@@ -42,29 +40,25 @@ public class TransaccionService {
 
     @Transactional
     public ProcesadorRespuestaDTO validarTarjeta(TransaccionPeticionDTO peticionDTO) {
-        // Preparamos la solicitud de validación
+
         ValidacionTarjetaRequestDTO validacionRequest = new ValidacionTarjetaRequestDTO();
         validacionRequest.setNumeroTarjeta(peticionDTO.getNumeroTarjeta());
         validacionRequest.setCvv(peticionDTO.getCvv());
         validacionRequest.setFechaCaducidad(peticionDTO.getFechaCaducidad());
 
         ProcesadorRespuestaDTO procesadorRespuesta = new ProcesadorRespuestaDTO();
-        
+
         try {
-            // Intentamos validar la tarjeta
             ValidacionTarjetaResponseDTO respuesta = tarjetaClient.validarTarjeta(validacionRequest);
             procesadorRespuesta.setEsValida(respuesta.getEsValida());
             procesadorRespuesta.setMensaje(respuesta.getMensaje());
 
-            
-            // Solo intentamos obtener el SWIFT si la tarjeta es válida
             if (respuesta.getEsValida()) {
                 SwiftResponseDTO swiftResponse = tarjetaClient.obtenerSwift(peticionDTO.getNumeroTarjeta());
                 procesadorRespuesta.setSwiftBanco(swiftResponse.getSwiftBanco());
             }
 
         } catch (FeignException.BadRequest e) {
-            // Extraemos el mensaje de error original del servicio de tarjetas
             log.warn("Error de validación de tarjeta: {}", e.contentUTF8());
             procesadorRespuesta.setEsValida(false);
             procesadorRespuesta.setMensaje(e.contentUTF8());
@@ -76,7 +70,6 @@ public class TransaccionService {
             procesadorRespuesta.setSwiftBanco("N/A");
         }
 
-        // Guardamos la transacción independientemente del resultado
         try {
             Transaccion transaccion = new Transaccion();
             transaccion.setCodigoUnicoTransaccion(peticionDTO.getCodigoUnicoTransaccion());
@@ -89,22 +82,20 @@ public class TransaccionService {
             transaccion.setEstado(procesadorRespuesta.isEsValida());
 
             String datosParaEncriptar = String.format(
-                "CodigoUnicoTransaccion=%s;numeroTarjeta=%s;cvv=%s;fechaCaducidad=%s;FechaRecepcion=%s;FechaRespuesta=%s;monto=%s;estado=%s",
-                transaccion.getCodigoUnicoTransaccion(),
-                transaccion.getNumeroTarjeta(),
-                transaccion.getCvv(),
-                transaccion.getFechaCaducidad(),
-                transaccion.getFechaRecepcion(),
-                transaccion.getFechaRespuesta(),
-                transaccion.getMonto(),
-                transaccion.isEstado()
-            );
-            
+                    "CodigoUnicoTransaccion=%s;numeroTarjeta=%s;cvv=%s;fechaCaducidad=%s;FechaRecepcion=%s;FechaRespuesta=%s;monto=%s;estado=%s",
+                    transaccion.getCodigoUnicoTransaccion(),
+                    transaccion.getNumeroTarjeta(),
+                    transaccion.getCvv(),
+                    transaccion.getFechaCaducidad(),
+                    transaccion.getFechaRecepcion(),
+                    transaccion.getFechaRespuesta(),
+                    transaccion.getMonto(),
+                    transaccion.isEstado());
+
             transaccion.setTransaccionEncriptada(encriptacionUtil.encriptar3DES(datosParaEncriptar));
             transaccionRepository.save(transaccion);
         } catch (Exception e) {
             log.error("Error al guardar la transacción: {}", e.getMessage());
-            // No lanzamos la excepción para mantener el código 200
         }
 
         return procesadorRespuesta;
@@ -113,7 +104,8 @@ public class TransaccionService {
     @Transactional(readOnly = true)
     public Transaccion buscarTransaccion(String codigoUnico) {
         return transaccionRepository.findById(codigoUnico)
-                .orElseThrow(() -> new TransaccionNotFoundException("Transacción no encontrada con código: " + codigoUnico));
+                .orElseThrow(
+                        () -> new TransaccionNotFoundException("Transacción no encontrada con código: " + codigoUnico));
     }
 
     @Transactional(readOnly = true)

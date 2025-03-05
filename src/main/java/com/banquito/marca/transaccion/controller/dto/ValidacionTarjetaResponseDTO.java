@@ -19,4 +19,4 @@ public class ValidacionTarjetaResponseDTO {
     public void setMensaje(String mensaje) {
         this.mensaje = mensaje;
     }
-} 
+}

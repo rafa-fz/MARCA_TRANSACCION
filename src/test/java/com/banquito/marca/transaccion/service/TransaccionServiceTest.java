@@ -1,12 +1,15 @@
 package com.banquito.marca.transaccion.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 
@@ -23,13 +26,13 @@ import com.banquito.marca.transaccion.controller.dto.SwiftResponseDTO;
 import com.banquito.marca.transaccion.controller.dto.TransaccionPeticionDTO;
 import com.banquito.marca.transaccion.controller.dto.ValidacionTarjetaRequestDTO;
 import com.banquito.marca.transaccion.controller.dto.ValidacionTarjetaResponseDTO;
+import com.banquito.marca.transaccion.excepcion.TransaccionNotFoundException;
 import com.banquito.marca.transaccion.model.Transaccion;
 import com.banquito.marca.transaccion.repository.TransaccionRepository;
 import com.banquito.marca.transaccion.utils.EncriptacionUtil;
-import com.banquito.marca.transaccion.excepcion.TransaccionNotFoundException;
 
-import feign.Request;
 import feign.FeignException;
+import feign.Request;
 
 @ExtendWith(MockitoExtension.class)
 public class TransaccionServiceTest {
@@ -65,7 +68,6 @@ public class TransaccionServiceTest {
 
     @Test
     void validarTarjeta_CuandoTarjetaEsValida_DebeRetornarRespuestaExitosa() {
-        // Arrange
         respuestaValidacion.setEsValida(true);
         respuestaValidacion.setMensaje("La tarjeta es válida");
         respuestaSwift.setSwiftBanco("PICHECU0001");
@@ -74,10 +76,8 @@ public class TransaccionServiceTest {
         when(tarjetaClient.obtenerSwift(anyString())).thenReturn(respuestaSwift);
         when(transaccionRepository.save(any(Transaccion.class))).thenReturn(new Transaccion());
 
-        // Act
         ProcesadorRespuestaDTO resultado = transaccionService.validarTarjeta(peticionDTO);
 
-        // Assert
         assertTrue(resultado.isEsValida());
         assertEquals("La tarjeta es válida", resultado.getMensaje());
         assertEquals("PICHECU0001", resultado.getSwiftBanco());
@@ -85,88 +85,74 @@ public class TransaccionServiceTest {
 
     @Test
     void validarTarjeta_CuandoTarjetaNoEsValida_DebeRetornarRespuestaFallida() {
-        // Arrange
         respuestaValidacion.setEsValida(false);
         respuestaValidacion.setMensaje("Tarjeta inválida");
 
         when(tarjetaClient.validarTarjeta(any(ValidacionTarjetaRequestDTO.class))).thenReturn(respuestaValidacion);
         when(transaccionRepository.save(any(Transaccion.class))).thenReturn(new Transaccion());
 
-        // Act
         ProcesadorRespuestaDTO resultado = transaccionService.validarTarjeta(peticionDTO);
 
-        // Assert
         assertFalse(resultado.isEsValida());
         assertEquals("Tarjeta inválida", resultado.getMensaje());
     }
 
     @Test
     void validarTarjeta_CuandoHayErrorDeValidacion_DebeRetornarRespuestaConError() {
-        // Arrange
         Request request = Request.create(Request.HttpMethod.POST, "/validar", new HashMap<>(), null, null, null);
-        FeignException.BadRequest badRequest = new FeignException.BadRequest("Error de validación", request, null, Collections.emptyMap());
-        
+        FeignException.BadRequest badRequest = new FeignException.BadRequest("Error de validación", request, null,
+                Collections.emptyMap());
+
         when(tarjetaClient.validarTarjeta(any(ValidacionTarjetaRequestDTO.class))).thenThrow(badRequest);
         when(transaccionRepository.save(any(Transaccion.class))).thenReturn(new Transaccion());
 
-        // Act
         ProcesadorRespuestaDTO resultado = transaccionService.validarTarjeta(peticionDTO);
 
-        // Assert
         assertFalse(resultado.isEsValida());
         assertNotNull(resultado.getMensaje());
     }
 
     @Test
     void validarTarjeta_CuandoErrorAlObtenerSwift_DebeRetornarRespuestaConSwiftNA() {
-        // Arrange
         respuestaValidacion.setEsValida(true);
         respuestaValidacion.setMensaje("La tarjeta es válida");
         Request request = Request.create(Request.HttpMethod.GET, "/swift", new HashMap<>(), null, null, null);
         FeignException.NotFound notFound = new FeignException.NotFound(
-            "Tarjeta no encontrada", 
-            request, 
-            "{\"statusCode\": 404, \"message\": \"Tarjeta no encontrada\"}".getBytes(),
-            Collections.emptyMap()
-        );
+                "Tarjeta no encontrada",
+                request,
+                "{\"statusCode\": 404, \"message\": \"Tarjeta no encontrada\"}".getBytes(),
+                Collections.emptyMap());
 
         when(tarjetaClient.validarTarjeta(any(ValidacionTarjetaRequestDTO.class))).thenReturn(respuestaValidacion);
         when(tarjetaClient.obtenerSwift(anyString())).thenThrow(notFound);
         when(transaccionRepository.save(any(Transaccion.class))).thenReturn(new Transaccion());
 
-        // Act
         ProcesadorRespuestaDTO resultado = transaccionService.validarTarjeta(peticionDTO);
 
-        // Assert
         assertNotNull(resultado.getMensaje());
     }
 
     @Test
     void buscarTransaccion_CuandoExisteTransaccion_DebeRetornarTransaccion() {
-        // Arrange
         String codigoUnico = "TRX123";
         Transaccion transaccion = new Transaccion();
         transaccion.setCodigoUnicoTransaccion(codigoUnico);
 
         when(transaccionRepository.findById(codigoUnico)).thenReturn(java.util.Optional.of(transaccion));
 
-        // Act
         Transaccion resultado = transaccionService.buscarTransaccion(codigoUnico);
 
-        // Assert
         assertNotNull(resultado);
         assertEquals(codigoUnico, resultado.getCodigoUnicoTransaccion());
     }
 
     @Test
     void buscarTransaccion_CuandoNoExisteTransaccion_DebeLanzarExcepcion() {
-        // Arrange
         String codigoUnico = "TRX123";
         when(transaccionRepository.findById(codigoUnico)).thenReturn(java.util.Optional.empty());
 
-        // Act & Assert
         assertThrows(TransaccionNotFoundException.class, () -> {
             transaccionService.buscarTransaccion(codigoUnico);
         });
     }
-} 
+}

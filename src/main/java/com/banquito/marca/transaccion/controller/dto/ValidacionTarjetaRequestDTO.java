@@ -5,7 +5,6 @@ public class ValidacionTarjetaRequestDTO {
     private String cvv;
     private String fechaCaducidad;
 
-    // Getters y Setters
     public String getNumeroTarjeta() {
         return numeroTarjeta;
     }
@@ -29,4 +28,4 @@ public class ValidacionTarjetaRequestDTO {
     public void setFechaCaducidad(String fechaCaducidad) {
         this.fechaCaducidad = fechaCaducidad;
     }
-} 
+}

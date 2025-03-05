@@ -19,7 +19,7 @@ public class TransaccionPeticionMapper {
         transaccion.setCvv(dto.getCvv());
         transaccion.setFechaCaducidad(dto.getFechaCaducidad());
         transaccion.setMonto(dto.getMonto());
-        
+
         return transaccion;
     }
 
@@ -34,7 +34,7 @@ public class TransaccionPeticionMapper {
         dto.setCvv(entity.getCvv());
         dto.setFechaCaducidad(entity.getFechaCaducidad());
         dto.setMonto(entity.getMonto());
-        
+
         return dto;
     }
 }

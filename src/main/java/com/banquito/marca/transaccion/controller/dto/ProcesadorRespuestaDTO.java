@@ -40,4 +40,4 @@ public class ProcesadorRespuestaDTO {
     public void setSwiftBanco(String swiftBanco) {
         this.swiftBanco = swiftBanco;
     }
-} 
+}
