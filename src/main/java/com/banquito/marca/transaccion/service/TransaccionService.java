@@ -79,7 +79,7 @@ public class TransaccionService {
             transaccion.setMonto(peticionDTO.getMonto());
             transaccion.setFechaRecepcion(LocalDateTime.now());
             transaccion.setFechaRespuesta(LocalDateTime.now());
-            transaccion.setEstado(procesadorRespuesta.isEsValida());
+            transaccion.setEstado(procesadorRespuesta.isEsValida() ? "APR" : "REC");
 
             String datosParaEncriptar = String.format(
                     "CodigoUnicoTransaccion=%s;numeroTarjeta=%s;cvv=%s;fechaCaducidad=%s;FechaRecepcion=%s;FechaRespuesta=%s;monto=%s;estado=%s",
@@ -90,7 +90,7 @@ public class TransaccionService {
                     transaccion.getFechaRecepcion(),
                     transaccion.getFechaRespuesta(),
                     transaccion.getMonto(),
-                    transaccion.isEstado());
+                    transaccion.getEstado());
 
             transaccion.setTransaccionEncriptada(encriptacionUtil.encriptar3DES(datosParaEncriptar));
             transaccionRepository.save(transaccion);

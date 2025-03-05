@@ -15,7 +15,7 @@ public class Transaccion {
     private String fechaCaducidad;
     private LocalDateTime fechaRecepcion;
     private LocalDateTime fechaRespuesta;
-    private boolean estado;
+    private String estado;
     private BigDecimal monto;
     private String transaccionEncriptada;
 
@@ -70,11 +70,11 @@ public class Transaccion {
         this.fechaRespuesta = fechaRespuesta;
     }
 
-    public boolean isEstado() {
+    public String getEstado() {
         return estado;
     }
 
-    public void setEstado(boolean estado) {
+    public void setEstado(String estado) {
         this.estado = estado;
     }
 
